@@ -14,6 +14,7 @@
 #include "LY_NN.h"
 
 #define JLRAND (double)rand()/RAND_MAX
+#define PI 3.14159
 
 using namespace std;
 
@@ -33,9 +34,10 @@ public:
     double u;
     
     void shipinit();
+    void shiptestinit();
     void simphys();
     bool ingoal(double targetx1, double targety1, double targety2);
-    bool inbounds();
+    bool outbounds();
 };
 
 class Map{
@@ -63,27 +65,46 @@ public:
 
 /////===============================BOAT FUNCTIONS========================================
 void Lilboat::shipinit(){
-    startxt = rand()%100; //placeholders for every episode
-    startyt = rand()%100;
+    startxt = rand()%1000; //placeholders for every episode             //HR_4
+    startyt = rand()%1000;
     xt = startxt;
     yt = startyt;
-    theta = rand()%360*3.14159/260;
+    theta = rand()%360*PI/180;
     omega = rand()%10;
     v = 3.0;
     dt = 0.2;
     T = 5;
     u = 0;
+    
+    cout << "CREATING BOAT:........Xpos: " << startxt << "\t" << "Ypos" << startyt << endl << endl;
+}
+
+void Lilboat::shiptestinit(){
+    startxt = 946; //placeship directly to the left of the goal
+    startyt = 800; //Setting the location of the boat
+    xt = startxt;
+    yt = startyt;
+    theta = (1/2)*PI; //HR_3 -- Setting orientation of boat
+    omega = rand()%10;
+    v = 3.0;
+    dt = 0.2;
+    T = 5;
+    u = 0;
+    
+    cout << "SETTING THE BOAT DIRECTLY LEFT OF THE GOAL" << endl;
+    cout << "CREATING BOAT:........Xpos: " << startxt << "\t" << "Ypos" << startyt << endl << endl;
+    
 }
 
 void Lilboat::simphys(){
-    xtplus1 = xt + v*sin(theta)*dt;
+    xtplus1 = xt + v*sin(theta)*dt; //LR_8
     ytplus1 = yt + v*cos(theta)*dt;
     theta = theta + omega*dt;
     omega = omega + (u-omega)*dt/T;
 }
 
-bool Lilboat::ingoal(double targetx1, double targety1, double targety2){
-    //Thanks to Sierra Gonzales, the worst person ever:
+bool Lilboat::ingoal(double targetx1, double targety1, double targety2){ //MR_2
+    //Thanks to Sierra Gonzales:
     ///Calculate line of boat from timestep to previous timestep...To check if it crossed
     double m; //slope of boat
     double b; //y-int of boat
@@ -92,14 +113,14 @@ bool Lilboat::ingoal(double targetx1, double targety1, double targety2){
     b = ytplus1-m*xtplus1;
     y = m*95/*targetx1*/+b;
     
-    if(y>targety1 && y<targety2){ //Honi A.
+    if(y>targety1 && y<targety2){ //Thanks to Honi A.
         return true;
     }
     return false;
 }
 
-bool Lilboat::inbounds(){
-    if(xt<0 || xt>100 || yt<0 || yt>100){ //Honi A.
+bool Lilboat::outbounds(){
+    if(xt<0 || xt>1000 || yt<0 || yt>1000){ //Thanks to Honi A.
         return true;
     }
     return false;
@@ -107,19 +128,25 @@ bool Lilboat::inbounds(){
 
 /////===============================MAP FUNCTIONS========================================
 void Map::mapinit(){
-    //xdim = 100;
-    //ydim = 100;
-    targetx1 = 95;
-    targety1 = 95;
-    targetx2 = targetx1;
-    targety2 = 75;
+    xdim = 1000;
+    ydim = 1000;
+    targetx1 = 950;
+    targety1 = 950;
+    targetx2 = targetx1; //The goal is a vertical line on the top right corner
+    targety2 = 750;
+    
+    cout << "CREATING WORLD:.......Xdim: " << xdim << "\t" << "Ydim: " << ydim << endl;
+    cout << "CREATING GOAL:........Xtarget1: " << targetx1 << "\t" << "Ytarget1" << targety1 << endl;
+    cout << "CREATING GOAL:........Xtarget2: " << targetx2 << "\t" << "Ytarget2" << targety2 << endl << endl;
 }
 
 /////===============================POLICY FUNCTIONS========================================
 void Policy::policyinit(int num_of_weights){
+    vector<double> q;
     for(int i=0; i<num_of_weights; i++){
-        weights.push_back(i);
+        q.push_back(i);
     }
+    weights = q;
 }
 
 /////===============================EVOLUTONARY ALGORITHM========================================
@@ -137,7 +164,7 @@ void Policy::mutate(){
     for(int i = 0; i<weights.size(); i++){
         if(rand()%2==1){ //Thanks Dr. Y!
             //Can't mutate every weight right?
-            weights.at(i) = weights.at(i) + JLRAND - JLRAND;
+            weights.at(i) = weights.at(i) + JLRAND - JLRAND; //LR_5
         }
     }
 }
@@ -158,7 +185,7 @@ vector<Policy> EA_replicate(vector<Policy> pop, int popsize){
 };
 
 ////------------------------------------EA EVALUATE-------------------------------------------
-void Policy::policyeval(Lilboat Boat){
+void Policy::policyeval(Lilboat Boat){ //MR_2
     //how do i evaluate... I could go based on my output (u or distance)
     //must assign a physical equation to =fitness
     
@@ -169,7 +196,7 @@ void Policy::policyeval(Lilboat Boat){
     delta_y = Boat.ytplus1 - Boat.yt;
     tot_distance = sqrt((delta_x*delta_x)+(delta_y*delta_y));
     
-    fitness = tot_distance;
+    fitness = tot_distance; //MR_4
 }
 
 vector<Policy> EA_evaluate(vector<Policy> pop, int popsize, Lilboat Boat){
@@ -178,7 +205,7 @@ vector<Policy> EA_evaluate(vector<Policy> pop, int popsize, Lilboat Boat){
     
     //Assign fitness
     for(int i=0; i<population.size(); i++){
-        population.at(i).policyeval(Boat);
+        population.at(i).policyeval(Boat); //MR_4
     }
     
     return population;
@@ -187,36 +214,33 @@ vector<Policy> EA_evaluate(vector<Policy> pop, int popsize, Lilboat Boat){
 ////------------------------------------EA DOWNSELECT-------------------------------------------
 vector<Policy> EA_downselect(vector<Policy> pop, int popsize){ //Straight from Project Gamma
     vector<Policy> population;
-    population = pop;
     
-    assert(population.size() == 0); //why does it fail here?
-    assert(population.size() == popsize);
-    
+    assert(population.size() == 0);
     //cout << population.size() << endl; //debugging
     
     //BINARY TOURNAMENT COMMENCED
-    while(population.size() < popsize/2){ //MR_4
-        int spot1 = rand()%population.size();
-        int spot2 = rand()%population.size();
+    while(population.size() != popsize/2){ //MR_4
+        int spot1 = rand()%popsize;
+        int spot2 = rand()%popsize;
         while(spot2 == spot1){
-            spot2 = rand()%population.size();
+            spot2 = rand()%popsize;
         }
         assert(spot1!=spot2);
-        double fit1 = population.at(spot1).fitness;
-        double fit2 = population.at(spot2).fitness;
+        double fit1 = pop.at(spot1).fitness;
+        double fit2 = pop.at(spot2).fitness;
         
         if(fit1<fit2){
             //fit 1 wins -> put into population vector
-            Policy A1 = population.at(spot1);
+            Policy A1 = pop.at(spot1);
             population.push_back(A1);
         }
         else if(fit2<=fit1){
             //fit 2 wins -> put into population vector
-            Policy A2 = population.at(spot2);
+            Policy A2 = pop.at(spot2);
             population.push_back(A2);
         }
     }
-    assert(population.size() == popsize/2);
+    assert(population.size() == popsize/2); //
     //cout << population.size() << endl; //debugging
     return population;
 };
@@ -227,46 +251,70 @@ int main(){
     
     int maxgeneration = 300;
     int popsize = 100;
+    cout << "Welcome to NonLinear Eveolutionary Control!" << endl;
     
     ////--------------------------INITIALIZE PHYSICAL OBJECTS-----------------------------
-    Map PacificOcean;
+    Map PacificOcean; //LR_2
     PacificOcean.mapinit();
     
-    Lilboat LilYachty;
-    LilYachty.shipinit();
+    int w;
+    cout<< "Are you testing the program?........ 1(Y).......2(N)" << endl;
+    cin >> w;
     
-    neural_network NN;
+    Lilboat LilYachty; //LR_1
+    if(w==2){
+        LilYachty.shipinit();
+    }
+    else{
+        LilYachty.shiptestinit(); //HR_1 AND HR_3
+    }
+        
+    neural_network NN; //LR_4
     NN.setup(3/*input*/, 5/*hiddenlayer*/, 1/*output*/);
     
+    cout << "SETTING UP NEURAL NETWORK:................" << endl;
+    cout << "-///////////////////////////////////////////////////////////////////////////-" << endl << endl;
+    
+    ////////////////////////////////////PROJECT DELTA/////////////////////////////////////
     ////---------------------------------NEURAL NETWORK-------------------------------------
-    //TREAT AS BLACK BOX
-    NN.set_in_min_max(0,100); //xdim
-    NN.set_in_min_max(0,100); //ydim
-    NN.set_in_min_max(0,2*3.14159); //theta
-    NN.set_out_min_max(-15,15); //u
+    //TREAT AS BLACK BOX -- 3 inputs(show lower and upper bound) -- 5 hidden layers --- 1 output
+    NN.set_in_min_max(0,1000); //xdim       //LR_6
+    NN.set_in_min_max(0,1000); //ydim
+    NN.set_in_min_max(0,2*PI); //theta
+    NN.set_out_min_max(-15,15); //u         //LR_7
     
     ////-----------------------------EVOLUTIONARY ALGORITHM--------------------------------
     vector<Policy> pop;
     
     ///Initializing the policies to initialize the population--->
-    ///pop = EA_init(popsize); IS BELOW
+    ///pop = EA_init(popsize); IS BELOW~~~~~~~~~~~~~~~~~~
     for(int i=0; i<popsize; i++){
         Policy pol;
-        pol.policyinit(NN.get_number_of_weights()); //still need to set up policy initializer
+        pol.policyinit(NN.get_number_of_weights());
         pop.push_back(pol);
     }
     
     for(int i=0; i<maxgeneration; i++){
-        for(double sim=0; sim<popsize; sim++){
-            NN.set_weights(pop.at(sim).weights, true); //setting the weights
+        for(int s=0; s<popsize; s++){
+            
+            /* DEBUGGING HERE
+             cout << popsize << endl;
+             
+            for(int j=0; j<popsize; j++){
+                cout << pop.at(s).weights.at(j) << "..." << endl; //vector error
+            }
+            cout << pop.at(s).weights.size() << endl;
+            */
+            
+            NN.set_weights(pop.at(s).weights, true); //setting the weights
             
             int timestep = 0; //initializing timestep first
             
-            while(!LilYachty.ingoal(PacificOcean.targetx1, PacificOcean.targety1, PacificOcean.targety2) && !LilYachty.inbounds()){ //Thanks to Honi Ahmadian for this while-cond and bool funcs
+            while(!LilYachty.ingoal(PacificOcean.targetx1, PacificOcean.targety1, PacificOcean.targety2) && !LilYachty.outbounds()){ //Thanks to Honi Ahmadian for this while-cond and bool funcs
                 vector<double> state;
-                state.push_back(LilYachty.xt); //location much like gridworld
-                state.push_back(LilYachty.yt); //location much like gridworld
-                state.push_back(LilYachty.theta); //orientation of travel
+                state.push_back(LilYachty.xt); //location much like gridworld //MR_3
+                state.push_back(LilYachty.yt); //location much like gridworld //MR_3
+                state.push_back(LilYachty.theta); //orientation of travel //MR_3
             
                 NN.set_vector_input(state);
                 NN.execute(); //NN computes what u should be
@@ -274,12 +322,16 @@ int main(){
                 LilYachty.simphys(); //simulate timestep
             
                 //population.at(sim).fitness = fabs();
-                pop.at(sim).ts = timestep;
+                pop.at(s).ts = timestep;
                 
                 timestep++;
                 
                 if (timestep > 1000){
-                    break; //Thank you Dr. LY!
+                    break; //Thank you Dr. LY!...If this gets too long end the program and rethink solutions
+                }
+                
+                if (LilYachty.outbounds() ){
+                    break; //If ship gets out of bound stop the program       //LR_3
                 }
             }
         }
@@ -292,7 +344,7 @@ int main(){
     }
     
     for(int i=0; i<popsize; i++){
-        cout << i << " /t" << pop.at(i).fitness << " /t" << pop.at(i).ts << endl;
+        cout << i << " /t" << pop.at(i).fitness << " /t" << pop.at(i).ts << endl; //HR_2
     }
     return 0;
 }
